@@ -1,12 +1,11 @@
 import streamlit as st
 import numpy as np
-import cv2
+from PIL import Image
 import joblib
 
 # -------------------------
 # Page Configuration
 # -------------------------
-
 st.set_page_config(
     page_title="Cat vs Dog Classifier",
     page_icon="🐶",
@@ -16,15 +15,16 @@ st.set_page_config(
 # -------------------------
 # Load Model
 # -------------------------
-
 model = joblib.load("cat_dog_model.pkl")
 
 IMG_SIZE = 64
 
 st.title("🐱 Cat vs Dog Image Classifier")
-
 st.write("Upload an image to predict whether it is a Cat or Dog.")
 
+# -------------------------
+# Upload Image
+# -------------------------
 uploaded_file = st.file_uploader(
     "Choose an Image",
     type=["jpg", "jpeg", "png"]
@@ -32,24 +32,37 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+    # Read image using Pillow
+    image = Image.open(uploaded_file)
 
-    image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    # Convert to RGB (important if image is grayscale/RGBA)
+    image = image.convert("RGB")
 
-    st.image(image, channels="BGR", width=300)
+    # Display image
+    st.image(image, caption="Uploaded Image", width=300)
 
-    resized = cv2.resize(image, (IMG_SIZE, IMG_SIZE))
+    # Resize image
+    resized = image.resize((IMG_SIZE, IMG_SIZE))
 
+    # Convert to NumPy array
+    resized = np.array(resized)
+
+    # Flatten image for Logistic Regression
     resized = resized.flatten()
 
+    # Prediction
     prediction = model.predict([resized])[0]
 
     probability = model.predict_proba([resized])[0]
 
+    # Display prediction
     if prediction == 0:
         st.success("🐱 Prediction: CAT")
     else:
         st.success("🐶 Prediction: DOG")
 
-    st.write(f"Cat Probability : {probability[0]*100:.2f}%")
-    st.write(f"Dog Probability : {probability[1]*100:.2f}%")
+    # Display probabilities
+    st.subheader("Prediction Confidence")
+
+    st.write(f"🐱 Cat Probability: **{probability[0] * 100:.2f}%**")
+    st.write(f"🐶 Dog Probability: **{probability[1] * 100:.2f}%**")
